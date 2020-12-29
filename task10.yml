@@ -1,0 +1,50 @@
+- hosts: all
+  tasks:
+  - name: Yum Repository for Docker
+    yum_repository:
+      name: docker
+      description: yum repo for docker
+      baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+      gpgcheck: no
+  - name: Checking Docker is installed or not
+    command: rpm -q docker-ce
+    register: x
+    ignore_errors: yes
+    changed_when: false
+  - name: Installation of Docker
+    command: yum install docker-ce -y --nobest
+    when: x.rc != 0
+  - name: Starting and Enabling Docker
+    service:
+      name: docker
+      state: started
+      enabled: yes
+  - name: Checking python is installed or not
+    yum:
+      name: python36
+      state: present
+  - name: Installing docker python library
+    pip:
+      name: docker
+  - name: Pulling httpd image from Docker Hub
+    docker_image:
+      name: httpd
+      state: present
+  - name: Creating directory for storing html files
+    file:
+      state: directory
+      path: /root/httpd_server
+  - name: Copying html file content
+    copy:
+      dest: /root/httpd_server/file.html
+      content: This is the server configured through Ansible
+  - name: Running httpd Docker image and starting server
+    docker_container:
+      name: my_web_server
+      image: httpd
+      ports:
+        - "8080:80"
+      state: started
+      detach: yes
+      volumes:
+        - /root/httpd_server/:/usr/local/apache2/htdocs/
